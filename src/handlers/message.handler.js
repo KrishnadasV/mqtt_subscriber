@@ -1,16 +1,16 @@
 const logger = require('../utils/logger');
-const Message = require('../models/message.model');
-
+const DeviceDataLogs = require('../models/DeviceDataLogs.model');
+const mapDeviceDataToSchema = require('../utils/dataMapper');
 const handleMessage = (topic, message) => {
   try {
     const payload = JSON.parse(message.toString());
     logger.info(`Received message on topic ${topic}:`, payload);
-    
+
+    processSensorData(topic, payload);
     // Add your business logic here
     // Example: Process different topics
     switch (topic) {
-      case 'sensor/data':
-        processSensorData(topic, payload);
+      case 'specific_topics_to_process':
         break;
       case 'device/status':
         processDeviceStatus(payload);
@@ -37,11 +37,29 @@ const processDeviceStatus = (status) => {
 
 const saveRawMessage = async (topic, payload) => {
   try {
-    const message = new Message({
-      topic,
-      payload
+
+    let org = await DeviceDataLogs.findOne({ organization: topic });
+
+    console.log("new scheema org", org);
+
+    if (!org) {
+      console.log("new scheema no org creating");
+      org = new DeviceDataLogs({ organization: topic, machines:{} });
+    }
+
+    Object.keys(payload.tags).forEach(key => {
+      const deviceData = mapDeviceDataToSchema(payload.tags[key], key, payload.timestamp);
+      console.log("new scheema deviceData", deviceData);
+      if (org.machines.has(key)) {
+        console.log("new scheema deviceData exists adding", org.machines.get(key));
+        org.machines.get(key).push(deviceData);
+      } else {
+        console.log("new scheema deviceData no creating", deviceData);
+        org.machines.set(key, [deviceData]);
+      }
     });
-    await message.save();
+    await org.save();
+
     logger.info('Raw message saved to database');
   } catch (error) {
     logger.error('Error saving raw message:', error);
