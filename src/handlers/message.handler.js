@@ -48,7 +48,7 @@ const saveRawMessage = async (topic, payload) => {
     }
 
     Object.keys(payload.tags).forEach(key => {
-      const deviceData = mapDeviceDataToSchema(payload.tags[key], key, payload.timestamp);
+      const deviceData = mapDeviceDataToSchema(key, payload);
       console.log("new scheema deviceData", deviceData);
       if (org.machines.has(key)) {
         console.log("new scheema deviceData exists adding", org.machines.get(key));
